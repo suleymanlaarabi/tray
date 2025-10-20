@@ -8,9 +8,9 @@
         ((union { uint64_t u; double d; }){ .u = (x) }).u
 
     #define CStringFromJsValue(ctx, value, name) \
-        JSStringRef _name__##str = JSValueToStringCopy(ctx, value, NULL); \
-        size_t _name__##size = JSStringGetMaximumUTF8CStringSize(_name__##str); \
-        char name[_name__##size]; \
-        JSStringGetUTF8CString(_name__##str, name, _name__##size);
+        JSStringRef __name__##name = JSValueToStringCopy(ctx, value, NULL); \
+        size_t __size__##name = JSStringGetMaximumUTF8CStringSize(__name__##name); \
+        char name[__size__##name]; \
+        JSStringGetUTF8CString(__name__##name, name, __size__##name);
 
 #endif

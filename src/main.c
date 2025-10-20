@@ -1,3 +1,5 @@
+#include <rayflecs.h>
+#include <tray.h>
 #include <JavaScriptCore/JavaScriptCore.h>
 #include <stdio.h>
 #include <string.h>
@@ -7,8 +9,11 @@
 #define tray_assert(cond, msg, ...) if (!file) { fprintf(stderr, msg, __VA_ARGS__); }
 
 ecs_world_t *world = NULL;
+JSStringRef name_str = NULL;
+JSStringRef info_str = NULL;
+JSStringRef entity_str = NULL;
 
-void evaluate_script(const char *script_path, JSGlobalContextRef ctx) {
+void evaluate_script(const char *script_path, JSContextRef ctx) {
     FILE *file = fopen(script_path, "r");
     tray_assert(!file, "Failed to open script file: %s\n", script_path);
 
@@ -29,11 +34,22 @@ void evaluate_script(const char *script_path, JSGlobalContextRef ctx) {
     free(buffer);
 }
 
+int onInit(ecs_world_t *_) {
+    puts("Flecs devtool: https://www.flecs.dev/explorer/?host=localhost");
+    return 0;
+}
+
 int main(void) {
     world = ecs_init();
+    ECS_IMPORT(world, Js);
+    ECS_IMPORT(world, Rayflecs);
 
-    JSGlobalContextRef ctx = JSGlobalContextCreate(NULL);
-    JSObjectRef global = JSContextGetGlobalObject(ctx);
+    JSGlobalContextRef ctx = *ecs_singleton_get(world, JSGlobalContext);
+    JSObjectRef global = *ecs_singleton_get(world, JSGlobalObject);
+
+    name_str = JSStringCreateWithUTF8CString("name");
+    info_str = JSStringCreateWithUTF8CString("info");
+    entity_str = JSStringCreateWithUTF8CString("entity");
 
     js_api_register_debug_functions(ctx, global);
     js_api_register_flecs_functions(ctx, global);
@@ -47,6 +63,7 @@ int main(void) {
     ecs_app_run(world, &(ecs_app_desc_t) {
         .enable_rest = true,
         .enable_stats = true,
-        .target_fps = 120
+        .target_fps = 120,
+        .init = onInit
     });
 }

@@ -8,13 +8,37 @@
       "-Iinclude",
       "-framework",
       "JavaScriptCore",
+      "-D",
+      "FLECS_NO_CPP",
+      "-I/opt/homebrew/Cellar/raylib/5.5/include",
       "-c",
       "-o",
-      "build/main.o",
-      "src/main.c"
+      "build/rayflecs/rayflecs.o",
+      "src/rayflecs/rayflecs.c"
     ],
     "directory": "/Users/suleyman/tray",
-    "file": "/Users/suleyman/tray/src/main.c",
-    "output": "/Users/suleyman/tray/build/main.o"
+    "file": "/Users/suleyman/tray/src/rayflecs/rayflecs.c",
+    "output": "/Users/suleyman/tray/build/rayflecs/rayflecs.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/clang",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-Iinclude",
+      "-framework",
+      "JavaScriptCore",
+      "-D",
+      "FLECS_NO_CPP",
+      "-I/opt/homebrew/Cellar/raylib/5.5/include",
+      "-c",
+      "-o",
+      "build/rayflecs/transform.o",
+      "src/rayflecs/transform.c"
+    ],
+    "directory": "/Users/suleyman/tray",
+    "file": "/Users/suleyman/tray/src/rayflecs/transform.c",
+    "output": "/Users/suleyman/tray/build/rayflecs/transform.o"
   }
 ]

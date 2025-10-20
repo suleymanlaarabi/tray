@@ -1,3 +1,4 @@
+#include <string.h>
 #include <flecs.h>
 #include <stdio.h>
 #include <tray.h>
@@ -5,24 +6,23 @@
 #include <JavaScriptCore/JavaScriptCore.h>
 #include <JsApi.h>
 
+#define EntityToJSValue(ctx, entity) JSBigIntCreateWithUInt64(ctx, entity, NULL)
+
 JSValueRef js_ecs_new(
     JSContextRef ctx,
     UNUSED JSObjectRef function,
     UNUSED JSObjectRef thisObject,
-    UNUSED size_t argumentCount,
-    UNUSED const JSValueRef arguments[],
+    size_t argumentCount,
+    const JSValueRef arguments[],
     UNUSED JSValueRef* exception
 ) {
     ecs_entity_t entity = ecs_new(world);
 
-    if (argumentCount > 0) {
-        JSValueRef value = *arguments;
-        if (JSValueIsString(ctx, value)) {
-            CStringFromJsValue(ctx, value, entity_name);
-            ecs_set_name(world, entity, entity_name);
-        }
+    if (argumentCount > 0 && JSValueIsString(ctx, *arguments)) {
+        CStringFromJsValue(ctx, *arguments, entity_name);
+        ecs_set_name(world, entity, entity_name);
     }
-    return JSBigIntCreateWithUInt64(ctx, entity, NULL);
+    return EntityToJSValue(ctx, entity);
 }
 
 JSValueRef js_ecs_delete(
@@ -30,10 +30,10 @@ JSValueRef js_ecs_delete(
     UNUSED JSObjectRef function,
     UNUSED JSObjectRef thisObject,
     UNUSED size_t argumentCount,
-    UNUSED const JSValueRef arguments[],
+    const JSValueRef arguments[],
     UNUSED JSValueRef* exception
 ) {
-    ecs_delete(world, JSValueToUInt64(ctx, arguments[0], NULL));
+    ecs_delete(world, JSValueToUInt64(ctx, *arguments, NULL));
     return JSValueMakeUndefined(ctx);
 }
 
@@ -42,7 +42,7 @@ JSValueRef js_ecs_add(
     UNUSED JSObjectRef function,
     UNUSED JSObjectRef thisObject,
     UNUSED size_t argumentCount,
-    UNUSED const JSValueRef arguments[],
+    const JSValueRef arguments[],
     UNUSED JSValueRef* exception
 ) {
     ecs_add_id(world, JSValueToUInt64(ctx, arguments[0], NULL), JSValueToUInt64(ctx, arguments[1], NULL));
@@ -54,31 +54,178 @@ JSValueRef js_ecs_add_pair(
     UNUSED JSObjectRef function,
     UNUSED JSObjectRef thisObject,
     UNUSED size_t argumentCount,
-    UNUSED const JSValueRef arguments[],
+    const JSValueRef arguments[],
     UNUSED JSValueRef* exception
 ) {
     ecs_add_id(world, JSValueToUInt64(ctx, arguments[0], NULL), ecs_make_pair(JSValueToUInt64(ctx, arguments[1], NULL), JSValueToUInt64(ctx, arguments[2], NULL)));
     return JSValueMakeUndefined(ctx);
 }
 
-void js_api_register_flecs_functions(
+
+JSValueRef js_ecs_set_name(
     JSContextRef ctx,
-    JSObjectRef global
-)
-{
-    JSStringRef ecs_new_name = JSStringCreateWithUTF8CString("ecs_new");
-    JSObjectRef ecs_new_obj = JSObjectMakeFunctionWithCallback(ctx, ecs_new_name, js_ecs_new);
-    JSObjectSetProperty(ctx, global, ecs_new_name, ecs_new_obj, kJSPropertyAttributeNone, NULL);
+    UNUSED JSObjectRef function,
+    UNUSED JSObjectRef thisObject,
+    UNUSED size_t argumentCount,
+    const JSValueRef arguments[],
+    UNUSED JSValueRef* exception
+) {
+    CStringFromJsValue(ctx, arguments[1], name);
+    ecs_set_name(world, JSValueToUInt64(ctx, arguments[0], NULL), name);
+    return JSValueMakeUndefined(ctx);
+}
 
-    JSStringRef ecs_delete_name = JSStringCreateWithUTF8CString("ecs_delete");
-    JSObjectRef ecs_delete_obj = JSObjectMakeFunctionWithCallback(ctx, ecs_delete_name, js_ecs_delete);
-    JSObjectSetProperty(ctx, global, ecs_delete_name, ecs_delete_obj, kJSPropertyAttributeNone, NULL);
+void EcsRunJsSystem(ecs_iter_t *it) {
+    JSGlobalContext ctx = *ecs_singleton_get(world, JSGlobalContext);
+    JSObjectRef function = *ecs_get(world, it->system, JSObject);
+    JSObjectRef this = *ecs_get(world, it->system, JSObjectThis);
 
-    JSStringRef ecs_add_name = JSStringCreateWithUTF8CString("ecs_add");
-    JSObjectRef ecs_add_obj = JSObjectMakeFunctionWithCallback(ctx, ecs_add_name, js_ecs_add);
-    JSObjectSetProperty(ctx, global, ecs_add_name, ecs_add_obj, kJSPropertyAttributeNone, NULL);
+    JSObjectCallAsFunction(ctx, function, this, 0, NULL, NULL);
+}
 
-    JSStringRef ecs_add_pair_name = JSStringCreateWithUTF8CString("ecs_add_pair");
-    JSObjectRef ecs_add_pair_obj = JSObjectMakeFunctionWithCallback(ctx, ecs_add_pair_name, js_ecs_add_pair);
-    JSObjectSetProperty(ctx, global, ecs_add_pair_name, ecs_add_pair_obj, kJSPropertyAttributeNone, NULL);
+JSValueRef js_ecs_system(
+    JSContextRef ctx,
+    UNUSED JSObjectRef function,
+    JSObjectRef thisObject,
+    UNUSED size_t argumentCount,
+    const JSValueRef arguments[],
+    UNUSED JSValueRef* exception
+) {
+    CStringFromJsValue(ctx, arguments[0], query);
+
+    JSObjectRef js_function = JSValueToObject(ctx, arguments[1], NULL);
+
+    JSValueRef js_function_name = JSObjectGetProperty(ctx, js_function, name_str, NULL);
+
+    CStringFromJsValue(ctx, js_function_name, function_name);
+
+
+    ecs_entity_t entity = ecs_entity(world, {
+        .name = strdup(function_name),
+        .add = ecs_ids(ecs_dependson(EcsOnUpdate))
+    });
+
+    ecs_system_init(world, &(ecs_system_desc_t) {
+        .entity = entity,
+        .query.expr = strdup(query),
+        .callback = EcsRunJsSystem
+    });
+
+    ecs_set(world, entity, JSObject, {js_function});
+    ecs_set(world, entity, JSObjectThis, {thisObject});
+
+    return EntityToJSValue(ctx, entity);
+}
+
+static ecs_entity_t ecs_register_js_component(ecs_world_t *world, const char *name) {
+    ecs_entity_t entity = ecs_lookup(world, name);
+    if (entity) {
+        return entity;
+    }
+
+    ecs_entity_desc_t edesc = {0};
+    edesc.name = name;
+    edesc.symbol = name;
+    edesc.use_low_id = true;
+
+    ecs_component_desc_t cdesc = {0};
+    cdesc.entity = ecs_entity_init(world, &edesc);
+    cdesc.type.size = ECS_SIZEOF(void *);
+    cdesc.type.alignment = ECS_ALIGNOF(void *);
+    ecs_entity_t component = ecs_component_init(world, &cdesc);
+    return component;
+}
+
+JSValueRef js_ecs_component(
+    JSContextRef ctx,
+    UNUSED JSObjectRef function,
+    UNUSED JSObjectRef thisObject,
+    UNUSED size_t argumentCount,
+    const JSValueRef arguments[],
+    UNUSED JSValueRef* exception
+) {
+
+    CStringFromJsValue(ctx, arguments[0], name);
+    ecs_entity_t entity = ecs_register_js_component(world, strdup(name));
+
+    return EntityToJSValue(ctx, entity);
+}
+
+ecs_entity_t component_from_js_constructor(
+    JSContextRef ctx,
+    JSValueRef value
+) {
+    JSObjectRef obj = JSValueToObject(ctx, value, NULL);
+
+    JSValueRef name_value = JSObjectGetProperty(ctx, obj, name_str, NULL);
+    CStringFromJsValue(ctx, name_value, name)
+    ecs_entity_t component = ecs_lookup(world, name);
+
+    return component;
+}
+
+JSValueRef js_ecs_set(
+    JSContextRef ctx,
+    UNUSED JSObjectRef function,
+    UNUSED JSObjectRef thisObject,
+    UNUSED size_t argumentCount,
+    const JSValueRef arguments[],
+    UNUSED JSValueRef* exception
+) {
+    ecs_entity_t entity = JSValueToUInt64(ctx, arguments[0], NULL);
+    ecs_entity_t component = 0;
+    JSValueRef value = NULL;
+
+    if (JSValueIsBigInt(ctx, arguments[1])) {
+        component = JSValueToUInt64(ctx, arguments[1], NULL);
+        value = arguments[2];
+    } else {
+        JSObjectRef obj = JSValueToObject(ctx, arguments[1], NULL);
+        JSObjectRef info = JSValueToObject(ctx, JSObjectGetProperty(ctx, obj, info_str, NULL), NULL);
+        component = JSValueToUInt64(ctx, JSObjectGetProperty(ctx, info, entity_str, NULL), NULL);
+        value = arguments[1];
+    }
+
+    JSValueProtect(ctx, value);
+    ecs_set_id(world, entity, component, sizeof(void *), &value);
+    return JSValueMakeUndefined(ctx);
+}
+
+JSValueRef js_ecs_get(
+    JSContextRef ctx,
+    UNUSED JSObjectRef function,
+    UNUSED JSObjectRef thisObject,
+    UNUSED size_t argumentCount,
+    const JSValueRef arguments[],
+    UNUSED JSValueRef* exception
+) {
+    ecs_entity_t entity = JSValueToUInt64(ctx, arguments[0], NULL);
+    ecs_entity_t component = component_from_js_constructor(ctx, arguments[1]);
+
+    return *((JSValueRef *) ecs_get_id(world, entity, component));
+}
+
+static void register_js_function(
+    JSContextRef ctx,
+    JSObjectRef global,
+    const char *name,
+    JSObjectCallAsFunctionCallback callback
+) {
+    JSStringRef js_name = JSStringCreateWithUTF8CString(name);
+    JSObjectRef js_func = JSObjectMakeFunctionWithCallback(ctx, js_name, callback);
+    JSObjectSetProperty(ctx, global, js_name, js_func, kJSPropertyAttributeNone, NULL);
+    JSStringRelease(js_name);
+}
+
+void js_api_register_flecs_functions(JSContextRef ctx, JSObjectRef global) {
+    register_js_function(ctx, global, "ecs_new", js_ecs_new);
+    register_js_function(ctx, global, "ecs_delete", js_ecs_delete);
+    register_js_function(ctx, global, "ecs_add", js_ecs_add);
+    register_js_function(ctx, global, "ecs_add_pair", js_ecs_add_pair);
+    register_js_function(ctx, global, "ecs_set_name", js_ecs_set_name);
+    register_js_function(ctx, global, "ecs_system", js_ecs_system);
+    register_js_function(ctx, global, "ecs_component", js_ecs_component);
+    register_js_function(ctx, global, "ecs_set", js_ecs_set);
+    register_js_function(ctx, global, "ecs_get", js_ecs_get);
+
 }

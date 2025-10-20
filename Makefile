@@ -1,5 +1,6 @@
 CC := clang
-CFLAGS := -Wall -Wextra -Wpedantic -Iinclude -framework JavaScriptCore
+CFLAGS := -Wall -Wextra -Wpedantic -Iinclude -framework JavaScriptCore -D FLECS_NO_CPP $(shell pkg-config --cflags raylib)
+LDFLAGS := $(shell pkg-config --libs raylib)
 
 SRC_DIR := src
 INC_DIR := include
@@ -16,10 +17,10 @@ run: all
 	@$(TARGET)
 
 js:
-	@bun build ./src_ts/main.ts --outfile ./build/main.js --minify
+	@bun build ./src_ts/main.ts --outfile ./build/main.js
 
 $(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(LDFLAGS) $(CFLAGS) $^ -o $@
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
