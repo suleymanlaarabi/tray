@@ -1,0 +1,20 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/clang",
+      "-Wall",
+      "-Wextra",
+      "-Wpedantic",
+      "-Iinclude",
+      "-framework",
+      "JavaScriptCore",
+      "-c",
+      "-o",
+      "build/main.o",
+      "src/main.c"
+    ],
+    "directory": "/Users/suleyman/tray",
+    "file": "/Users/suleyman/tray/src/main.c",
+    "output": "/Users/suleyman/tray/build/main.o"
+  }
+]
