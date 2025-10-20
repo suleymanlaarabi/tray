@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <string.h>
 #include <flecs.h>
 #include <stdio.h>
@@ -79,8 +80,16 @@ void EcsRunJsSystem(ecs_iter_t *it) {
     JSGlobalContext ctx = *ecs_singleton_get(world, JSGlobalContext);
     JSObjectRef function = *ecs_get(world, it->system, JSObject);
     JSObjectRef this = *ecs_get(world, it->system, JSObjectThis);
+    JSValueRef *elements = malloc(sizeof(JSValueRef) * it->count);
 
-    JSObjectCallAsFunction(ctx, function, this, 0, NULL, NULL);
+    for (int i = 0; i < it->count; i++) {
+        elements[i] = JSBigIntCreateWithUInt64(ctx, it->entities[i], NULL);
+    }
+
+    JSValueRef array = JSObjectMakeArray(ctx, it->count, elements, NULL);
+
+
+    JSObjectCallAsFunction(ctx, function, this, 1, &array, NULL);
 }
 
 JSValueRef js_ecs_system(

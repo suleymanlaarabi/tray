@@ -9,6 +9,7 @@ ecs_add_pair(entity, ChildOf, player);
 class Velocity {
   x: number = 0;
   y: number = 0;
+
   constructor(x: number = 0, y: number = 0) {
     this.x = x;
     this.y = y;
@@ -17,4 +18,4 @@ class Velocity {
 
 ecs_set(player, new Velocity(10, 10));
 
-ecs_system("", function PosVelSystem() {});
+ecs_system("Velocity", function PosVelSystem(entities) {});
