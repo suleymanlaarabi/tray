@@ -10,10 +10,26 @@ export function classDeftoCDef(target: Constructor): ComponentDef {
   return def;
 }
 
-export function component(target: Constructor) {
-  const def = classDeftoCDef(target);
-  target.prototype.info = {
-    def,
-    entity: ecs_component(target.name, def),
+export function component(desc?: { name?: string; description?: string }) {
+  return (target: Constructor) => {
+    const def = classDeftoCDef(target);
+    let name = target.name;
+    if (desc) {
+      if (desc.name) {
+        target.prototype.path = desc.name;
+        name = desc.name;
+      }
+    }
+    target.prototype.entity = ecs_component(name, def);
+    if (desc?.description) {
+      ecs_set_description(target.prototype.entity, desc.description);
+    }
+  };
+}
+
+export function builtin(entity: Entity, path: string) {
+  return (target: Constructor) => {
+    target.prototype.entity = entity;
+    target.prototype.path = path;
   };
 }

@@ -5,8 +5,13 @@
 
 extern ecs_world_t *world;
 extern JSStringRef name_str;
-extern JSStringRef info_str;
 extern JSStringRef entity_str;
+extern JSStringRef parent_str;
+extern JSStringRef constructor_str;
+extern JSStringRef childOf_str;
+extern JSStringRef prototype_str;
+extern JSStringRef x_str, y_str, r_str, g_str, b_str, a_str;
+extern JSStringRef radius_str, width_str, height_str;
 
 void JsImport(ecs_world_t *world);
 

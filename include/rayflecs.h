@@ -4,6 +4,7 @@
 #include "flecs.h"
 #include <stdint.h>
 #include <raylib.h>
+#include <JavaScriptCore/JavaScriptCore.h>
 
 #define MAP_f32 F32
 #define MAP_i32 I32
@@ -20,18 +21,22 @@
 
 #define rayprimitive(world, component, type) ecs_primitive(world, { .entity = ecs_id(component), .kind = EXPAND_CAT(Ecs, MAP_##type) })
 
-typedef float CircleShape;
-typedef Vector2 RectangleShape;
+typedef struct {
+    float radius;
+} CircleShape;
 
-extern ECS_COMPONENT_DECLARE(Rectangle);
-extern ECS_COMPONENT_DECLARE(CircleShape);
-extern ECS_COMPONENT_DECLARE(RectangleShape);
-extern ECS_COMPONENT_DECLARE(Color);
-extern ECS_COMPONENT_DECLARE(Camera3D);
+typedef struct {
+    float width;
+    float height;
+} RectangleShape;
 
-typedef Vector3 Cube;
+typedef JSValueRef JSCircleShape;
+typedef JSValueRef JSRectangleShape;
+typedef JSValueRef JSColor;
 
-extern ECS_COMPONENT_DECLARE(Cube);
+extern ECS_COMPONENT_DECLARE(JSCircleShape);
+extern ECS_COMPONENT_DECLARE(JSRectangleShape);
+extern ECS_COMPONENT_DECLARE(JSColor);
 
 void RayflecsImport(ecs_world_t *world);
 

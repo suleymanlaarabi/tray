@@ -2,21 +2,21 @@
 #define TRAY_TRANSFORM_H
 
 #include "flecs.h"
+#include <JavaScriptCore/JavaScriptCore.h>
 #include <raylib.h>
 
 typedef Vector2 Position;
-typedef Vector3 Position3;
 typedef Vector2 Velocity;
-typedef Vector2 Size;
-typedef Vector2 Scale;
-typedef float Rotation;
 
-extern ECS_COMPONENT_DECLARE(Position);
-extern ECS_COMPONENT_DECLARE(Position3);
-extern ECS_COMPONENT_DECLARE(Vector3);
-extern ECS_COMPONENT_DECLARE(Size);
-extern ECS_COMPONENT_DECLARE(Scale);
-extern ECS_COMPONENT_DECLARE(Rotation);
+typedef JSValueRef JSPosition;
+typedef JSValueRef JSVelocity;
+typedef JSValueRef JSScale;
+typedef JSValueRef JSRotation;
+
+extern ECS_COMPONENT_DECLARE(JSPosition);
+extern ECS_COMPONENT_DECLARE(JSScale);
+extern ECS_COMPONENT_DECLARE(JSRotation);
+extern ECS_COMPONENT_DECLARE(JSVelocity);
 
 void TransformImport(ecs_world_t *world);
 

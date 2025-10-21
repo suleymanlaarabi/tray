@@ -2,3 +2,5 @@
 build/
 playground
 playground.ts
+src/External/flecs.c
+include/flecs.h

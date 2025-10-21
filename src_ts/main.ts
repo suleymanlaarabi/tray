@@ -1,21 +1,60 @@
-import { component } from "./tapi/decorator";
+import {
+  Color,
+  Position,
+  RectangleShape,
+  Velocity,
+  query,
+  component,
+} from "./tapi/index";
 
-const player = ecs_new("Player");
-const entity = ecs_new();
+@component({
+  description: "Why Not",
+})
+class MoveNotAllowed {}
 
-ecs_add_pair(entity, ChildOf, player);
+const World = ecs_new("World");
 
-@component
-class Velocity {
-  x: number = 0;
-  y: number = 0;
+const Ceiling = ecs_new({
+  name: "Ceiling",
+  parent: World,
+});
 
-  constructor(x: number = 0, y: number = 0) {
-    this.x = x;
-    this.y = y;
-  }
+for (let i = 0; i < 10; i++) {
+  ecs_set(
+    ecs_new({
+      name: `Ceiling(${i})`,
+      parent: Ceiling,
+    }),
+    new Position(i * 100, 400),
+    new RectangleShape(100, 50),
+    new Color(255, 0, 0),
+  );
 }
 
-ecs_set(player, new Velocity(10, 10));
+const Floor = ecs_new({
+  name: "Floor",
+  parent: World,
+});
 
-ecs_system("Velocity", function PosVelSystem(entities) {});
+for (let i = 0; i < 10; i++) {
+  ecs_set(
+    ecs_new({
+      name: `Floor(${i})`,
+      parent: Floor,
+    }),
+    new Position(i * 100, 0),
+    new RectangleShape(100, 50),
+    new Color(255, 0, 0),
+  );
+}
+
+query("PosVel")
+  .with(Velocity)
+  .with(Position)
+  .without(MoveNotAllowed)
+  .system(OnUpdate, (count, velocities, positions) => {
+    for (let i = 0; i < count; i++) {
+      positions[i].x += velocities[i].x;
+      positions[i].y += velocities[i].y;
+    }
+  });
